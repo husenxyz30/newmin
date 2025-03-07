@@ -26,14 +26,21 @@ const firebaseHeaders = {
 
 function generateRandomString(length) {
     const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    return Array.from({ length }, () => characters.charAt(Math.floor(Math.random() * characters.length))).join('');
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
 }
 
 function generateRandomBirthday() {
     const start = new Date(1980, 0, 1);
     const end = new Date(2005, 11, 31);
     const randomDate = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-    return randomDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const year = randomDate.getFullYear();
+    const month = String(randomDate.getMonth() + 1).padStart(2, '0');
+    const day = String(randomDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function generateAccountData() {
@@ -53,7 +60,10 @@ function generateAccountData() {
 
 async function checkEmail(email) {
     try {
-        const response = await axios.get(`https://api.airdroptoken.com/user/email-in-use?email=${encodeURIComponent(email)}`, { headers });
+        const response = await axios.get(
+            `https://api.airdroptoken.com/user/email-in-use?email=${encodeURIComponent(email)}`,
+            { headers }
+        );
         return !response.data.in_use;
     } catch (error) {
         console.error('Error checking email:', error.message);
@@ -63,7 +73,10 @@ async function checkEmail(email) {
 
 async function checkUsername(username) {
     try {
-        const response = await axios.get(`https://api.airdroptoken.com/user/username-in-use?username=${username}`, { headers });
+        const response = await axios.get(
+            `https://api.airdroptoken.com/user/username-in-use?username=${username}`,
+            { headers }
+        );
         return !response.data.in_use;
     } catch (error) {
         console.error('Error checking username:', error.message);
@@ -73,12 +86,18 @@ async function checkUsername(username) {
 
 async function login(email, password) {
     try {
-        const response = await axios.post('https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=AIzaSyB0YXNLWl-mPWQNX-tvd7rp-HVNr_GhAmk', {
-            email,
-            password,
+        const payload = {
+            email: email,
+            password: password,
             returnSecureToken: true,
             clientType: 'CLIENT_TYPE_ANDROID'
-        }, { headers: firebaseHeaders });
+        };
+
+        const response = await axios.post(
+            'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=AIzaSyB0YXNLWl-mPWQNX-tvd7rp-HVNr_GhAmk',
+            payload,
+            { headers: firebaseHeaders }
+        );
 
         return response.data.idToken;
     } catch (error) {
@@ -89,12 +108,31 @@ async function login(email, password) {
 
 async function startMining(token) {
     try {
-        await axios.put('https://api.airdroptoken.com/miners/miner', {}, {
-            headers: { ...headers, 'authorization': `Bearer ${token}` }
-        });
-        await axios.put('https://api.airdroptoken.com/user/ads', 'ads_enabled=false', {
-            headers: { ...headers, 'authorization': `Bearer ${token}`, 'content-type': 'application/x-www-form-urlencoded; charset=utf-8' }
-        });
+        await axios.put(
+            'https://api.airdroptoken.com/miners/miner',
+            {},
+            {
+                headers: {
+                    ...headers,
+                    'authorization': `Bearer ${token}`,
+                    'content-length': 0
+                }
+            }
+        );
+
+        await axios.put(
+            'https://api.airdroptoken.com/user/ads',
+            'ads_enabled=false',
+            {
+                headers: {
+                    ...headers,
+                    'authorization': `Bearer ${token}`,
+                    'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
+                    'content-length': '17'
+                }
+            }
+        );
+
         return true;
     } catch (error) {
         console.error('Error starting mining:', error.message);
@@ -113,20 +151,35 @@ async function monitorUserAndMiningInfo(token, email, accounts, accountIndex) {
 
     while (running) {
         try {
-            const userResponse = await axios.get('https://api.airdroptoken.com/user/user/', {
-                headers: { ...headers, 'authorization': `Bearer ${token}` }
-            });
-            const miningResponse = await axios.get('https://api.airdroptoken.com/miners/miner/', {
-                headers: { ...headers, 'authorization': `Bearer ${token}` }
-            });
+            const userResponse = await axios.get(
+                'https://api.airdroptoken.com/user/user/',
+                {
+                    headers: {
+                        ...headers,
+                        'authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            const miningResponse = await axios.get(
+                'https://api.airdroptoken.com/miners/miner/',
+                {
+                    headers: {
+                        ...headers,
+                        'authorization': `Bearer ${token}`
+                    }
+                }
+            );
 
             const userData = userResponse.data;
+            const userDetails = userData.details || {};
             const miningData = miningResponse.data.object || {};
 
             accounts[accountIndex] = {
                 ...accounts[accountIndex],
-                miner_active: userData.details?.miner_active ?? 'N/A',
-                adt_balance: userData.details?.adt_balance ?? 'N/A',
+                miner_active: userDetails.miner_active ?? 'N/A',
+                adt_balance: userDetails.adt_balance ?? 'N/A',
+                max_miners: userDetails.max_miners ?? 'N/A',
                 mining_info: {
                     active: miningData.active ?? 'N/A',
                     adt_earned: miningData.adt_earned ?? 'N/A',
@@ -136,13 +189,22 @@ async function monitorUserAndMiningInfo(token, email, accounts, accountIndex) {
             };
 
             console.clear();
-            console.log(`Monitoring ${email}: Miner Active: ${accounts[accountIndex].miner_active}, ADT Balance: ${accounts[accountIndex].adt_balance}`);
-            console.log(`Mining Active: ${miningData.active}, ADT Earned: ${miningData.adt_earned}`);
-            console.log(`Press Ctrl+C to stop...`);
+            console.log(`Information for ${email}:`);
+            console.log(`Full Name: ${userData.full_name || 'N/A'}`);
+            console.log(`Email: ${userData.email || 'N/A'}`);
+            console.log(`Country: ${userData.country || 'N/A'}`);
+            console.log(`Miner Active: ${userDetails.miner_active ?? 'N/A'}`);
+            console.log(`ADT Balance: ${userDetails.adt_balance ?? 'N/A'}`);
+            console.log(`Max Miners: ${userDetails.max_miners ?? 'N/A'}`);
+            console.log(`Mining Active: ${miningData.active ?? 'N/A'}`);
+            console.log(`ADT Earned: ${miningData.adt_earned ?? 'N/A'}`);
+            console.log(`Mining Time Left: ${miningData.mining_time_left ?? 'N/A'} seconds`);
+            console.log(`ADT Per Hour: ${miningData.adt_per_hour ?? 'N/A'}`);
+            console.log('\nPress Ctrl+C to stop monitoring...');
 
             await new Promise(resolve => setTimeout(resolve, 5000));
         } catch (error) {
-            console.error(`Error monitoring ${email}:`, error.message);
+            console.error(`Error monitoring for ${email}:`, error.message);
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
     }
@@ -159,13 +221,29 @@ async function registerAccount(accountData) {
             throw new Error('Email or username already in use');
         }
 
-        const response = await axios.post('https://api.airdroptoken.com/user/register', accountData, {
-            headers: { ...headers, 'authorization': 'Bearer null' }
-        });
+        const response = await axios.post(
+            'https://api.airdroptoken.com/user/register',
+            accountData,
+            {
+                headers: {
+                    ...headers,
+                    'authorization': 'Bearer null',
+                    'content-length': JSON.stringify(accountData).length
+                }
+            }
+        );
 
-        return { success: true, data: accountData, response: response.data };
+        return {
+            success: true,
+            data: accountData,
+            response: response.data
+        };
     } catch (error) {
-        return { success: false, error: error.message, data: accountData };
+        return {
+            success: false,
+            error: error.message,
+            data: accountData
+        };
     }
 }
 
@@ -174,7 +252,10 @@ function saveToFile(accounts) {
 }
 
 async function main() {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
 
     rl.question('Enter the number of accounts to create: ', async (answer) => {
         const count = parseInt(answer);
@@ -185,31 +266,50 @@ async function main() {
         }
 
         const accounts = [];
-        console.log(`Creating ${count} accounts...`);
+        console.log(`Starting creation of ${count} accounts...`);
 
         for (let i = 0; i < count; i++) {
+            console.log(`Creating account ${i + 1}...`);
             const accountData = generateAccountData();
             const result = await registerAccount(accountData);
 
             if (result.success) {
-                console.log(`Account created: ${accountData.email}`);
+                console.log(`Account ${i + 1} created successfully: ${accountData.email}`);
                 
                 const token = await login(accountData.email, accountData.password);
                 if (token) {
                     const miningStarted = await startMining(token);
-                    console.log(`Mining ${miningStarted ? 'started' : 'failed'} for ${accountData.email}`);
+                    console.log(`Mining ${miningStarted ? 'started successfully' : 'failed to start'} for ${accountData.email}`);
                     
-                    accounts.push({ ...accountData, token, mining_status: miningStarted ? 'active' : 'inactive', created_at: new Date().toISOString() });
+                    accounts.push({
+                        email: accountData.email,
+                        username: accountData.username,
+                        password: accountData.password,
+                        phone: accountData.phone,
+                        birthday: accountData.birthday,
+                        token: token,
+                        mining_status: miningStarted ? 'active' : 'inactive',
+                        created_at: new Date().toISOString()
+                    });
 
                     if (miningStarted) {
                         await monitorUserAndMiningInfo(token, accountData.email, accounts, accounts.length - 1);
                     }
                 } else {
-                    console.log(`Login failed for ${accountData.email}`);
-                    accounts.push({ ...accountData, token: null, mining_status: 'inactive', created_at: new Date().toISOString() });
+                    console.log(`Failed to login for ${accountData.email}`);
+                    accounts.push({
+                        email: accountData.email,
+                        username: accountData.username,
+                        password: accountData.password,
+                        phone: accountData.phone,
+                        birthday: accountData.birthday,
+                        token: null,
+                        mining_status: 'inactive',
+                        created_at: new Date().toISOString()
+                    });
                 }
             } else {
-                console.log(`Failed to create account: ${result.error}`);
+                console.log(`Failed to create account ${i + 1}: ${result.error}`);
             }
 
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -221,4 +321,80 @@ async function main() {
     });
 }
 
-main().catch(console.error);
+main().catch(console.error);async function monitorUser AndMiningInfo(token, email, accounts, accountIndex) {
+    let running = true;
+    const monitoringDuration = 5000; // Durasi monitoring dalam milidetik (30 detik)
+    const startTime = Date.now();
+
+    process.on('SIGINT', () => {
+        console.log(`\nStopping monitoring for ${email}...`);
+        running = false;
+        saveToFile(accounts);
+    });
+
+    while (running) {
+        try {
+            const userResponse = await axios.get(
+                'https://api.airdroptoken.com/user/user/',
+                {
+                    headers: {
+                        ...headers,
+                        'authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            const miningResponse = await axios.get(
+                'https://api.airdroptoken.com/miners/miner/',
+                {
+                    headers: {
+                        ...headers,
+                        'authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            const userData = userResponse.data;
+            const userDetails = userData.details || {};
+            const miningData = miningResponse.data.object || {};
+
+            accounts[accountIndex] = {
+                ...accounts[accountIndex],
+                miner_active: userDetails.miner_active ?? 'N/A',
+                adt_balance: userDetails.adt_balance ?? 'N/A',
+                max_miners: userDetails.max_miners ?? 'N/A',
+                mining_info: {
+                    active: miningData.active ?? 'N/A',
+                    adt_earned: miningData.adt_earned ?? 'N/A',
+                    mining_time_left: miningData.mining_time_left ?? 'N/A',
+                    adt_per_hour: miningData.adt_per_hour ?? 'N/A'
+                }
+            };
+
+            console.clear();
+            console.log(`Information for ${email}:`);
+            console.log(`Full Name: ${userData.full_name || 'N/A'}`);
+            console.log(`Email: ${userData.email || 'N/A'}`);
+            console.log(`Country: ${userData.country || 'N/A'}`);
+            console.log(`Miner Active: ${userDetails.miner_active ?? 'N/A'}`);
+            console.log(`ADT Balance: ${userDetails.adt_balance ?? 'N/A'}`);
+            console.log(`Max Miners: ${userDetails.max_miners ?? 'N/A'}`);
+            console.log(`Mining Active: ${miningData.active ?? 'N/A'}`);
+            console.log(`ADT Earned: ${miningData.adt_earned ?? 'N/A'}`);
+            console.log(`Mining Time Left: ${miningData.mining_time_left ?? 'N/A'} seconds`);
+            console.log(`ADT Per Hour: ${miningData.adt_per_hour ?? 'N/A'}`);
+            console.log('\nPress Ctrl+C to stop monitoring...');
+
+            // Cek apakah waktu monitoring telah habis
+            if (Date.now() - startTime >= monitoringDuration) {
+                console.log(`\nMonitoring for ${email} has ended after ${monitoringDuration / 1000} seconds.`);
+                running = false; // Hentikan monitoring
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        } catch (error) {
+            console.error(`Error monitoring for ${email}:`, error.message);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+}
