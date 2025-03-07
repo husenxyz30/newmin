@@ -47,9 +47,9 @@ function generateAccountData() {
     const randomStr = generateRandomString(8);
     const referralCode = fs.readFileSync('code.txt', 'utf8').trim();
     return {
-        full_name: `user${randomStr}`,
-        username: `user${randomStr}`,
-        email: `manusia${randomStr}@gmail.com`,
+        full_name: `Muhammad${randomStr}`,
+        username: `Muhammad${randomStr}`,
+        email: `Muhammad${randomStr}@gmail.com`,
         password: `Pass${randomStr}123`,
         phone: `+628${Math.floor(100000000 + Math.random() * 900000000)}`,
         referral_code: referralCode,
