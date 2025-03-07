@@ -321,7 +321,7 @@ async function main() {
     });
 }
 
-main().catch(console.error);async function monitorUser AndMiningInfo(token, email, accounts, accountIndex) {
+main().catch(console.error);async function monitorUserAndMiningInfo(token, email, accounts, accountIndex) {
     let running = true;
     const monitoringDuration = 5000; // Durasi monitoring dalam milidetik (30 detik)
     const startTime = Date.now();
