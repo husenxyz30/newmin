@@ -1,79 +1,72 @@
-async function monitorUser AndMiningInfo(token, email, accounts, accountIndex) {
-    let running = true;
-    const monitoringDuration = 5000; // Durasi monitoring dalam milidetik (60 detik)
-    const startTime = Date.now();
+const axios = require('axios');
+const readline = require('readline');
+const fs = require('fs').promises;
 
-    process.on('SIGINT', () => {
-        console.log(`\nStopping monitoring for ${email}...`);
-        running = false;
-        saveToFile(accounts);
-    });
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
-    while (running) {
-        // Cek apakah waktu monitoring sudah habis
-        if (Date.now() - startTime >= monitoringDuration) {
-            console.log(`\nMonitoring for ${email} has stopped after 60 seconds.`);
-            running = false;
-            saveToFile(accounts);
-            break;
-        }
+async function getFirebaseToken() {
+    try {
+        // Prompt for credentials
+        const email = await new Promise(resolve => {
+            rl.question('Enter email: ', (answer) => resolve(answer));
+        });
 
-        try {
-            const userResponse = await axios.get(
-                'https://api.airdroptoken.com/user/user/',
-                {
-                    headers: {
-                        ...headers,
-                        'authorization': `Bearer ${token}`
-                    }
-                }
-            );
+        const password = await new Promise(resolve => {
+            rl.question('Enter password: ', (answer) => resolve(answer));
+        });
 
-            const miningResponse = await axios.get(
-                'https://api.airdroptoken.com/miners/miner/',
-                {
-                    headers: {
-                        ...headers,
-                        'authorization': `Bearer ${token}`
-                    }
-                }
-            );
+        const url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword';
+        
+        const params = {
+            key: 'AIzaSyB0YXNLWl-mPWQNX-tvd7rp-HVNr_GhAmk'
+        };
 
-            const userData = userResponse.data;
-            const userDetails = userData.details || {};
-            const miningData = miningResponse.data.object || {};
+        const payload = {
+            email: email,
+            password: password,
+            returnSecureToken: true,
+            clientType: 'CLIENT_TYPE_ANDROID'
+        };
 
-            accounts[accountIndex] = {
-                ...accounts[accountIndex],
-                miner_active: userDetails.miner_active ?? 'N/A',
-                adt_balance: userDetails.adt_balance ?? 'N/A',
-                max_miners: userDetails.max_miners ?? 'N/A',
-                mining_info: {
-                    active: miningData.active ?? 'N/A',
-                    adt_earned: miningData.adt_earned ?? 'N/A',
-                    mining_time_left: miningData.mining_time_left ?? 'N/A',
-                    adt_per_hour: miningData.adt_per_hour ?? 'N/A'
-                }
-            };
+        const headers = {
+            'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 9; ASUS_Z01QD Build/PI)',
+            'Connection': 'Keep-Alive',
+            'Accept-Encoding': 'gzip',
+            'Content-Type': 'application/json',
+            'X-Android-Package': 'com.lumira_mobile',
+            'X-Android-Cert': '1A1F179100AAF62649EAD01C6870FDE2510B1BC2',
+            'Accept-Language': 'en-US',
+            'X-Client-Version': 'Android/Fallback/X22003001/FirebaseCore-Android',
+            'X-Firebase-GMPID': '1:599727959790:android:5c819be0c7e7e3057a4dff',
+            'X-Firebase-Client': 'H4sIAAAAAAAAAKtWykhNLCpJSk0sKVayio7VUSpLLSrOzM9TslIyUqoFAFyivEQfAAAA'
+        };
 
-            console.clear();
-            console.log(`Information for ${email}:`);
-            console.log(`Full Name: ${userData.full_name || 'N/A'}`);
-            console.log(`Email: ${userData.email || 'N/A'}`);
-            console.log(`Country: ${userData.country || 'N/A'}`);
-            console.log(`Miner Active: ${userDetails.miner_active ?? 'N/A'}`);
-            console.log(`ADT Balance: ${userDetails.adt_balance ?? 'N/A'}`);
-            console.log(`Max Miners: ${userDetails.max_miners ?? 'N/A'}`);
-            console.log(`Mining Active: ${miningData.active ?? 'N/A'}`);
-            console.log(`ADT Earned: ${miningData.adt_earned ?? 'N/A'}`);
-            console.log(`Mining Time Left: ${miningData.mining_time_left ?? 'N/A'} seconds`);
-            console.log(`ADT Per Hour: ${miningData.adt_per_hour ?? 'N/A'}`);
-            console.log('\nPress Ctrl+C to stop monitoring...');
+        const response = await axios.post(url, payload, { 
+            params: params, 
+            headers: headers 
+        });
 
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        } catch (error) {
-            console.error(`Error monitoring for ${email}:`, error.message);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        }
+        const data = response.data;
+
+        console.log('\nResponse Data:');
+        console.log('Email:', data.email || 'N/A');
+        console.log('IdToken:', data.idToken || 'N/A');
+
+        // Save token to file
+        await fs.writeFile('token.txt', `email:${data.email}\ntoken:${data.idToken}`);
+        console.log('\nToken saved to token.txt');
+
+    } catch (error) {
+        console.error('Error occurred:', error.response?.data?.error?.message || error.message);
+    } finally {
+        rl.close();
     }
-                  }
+}
+
+// Install required package first:
+// npm install axios
+
+getFirebaseToken();
