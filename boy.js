@@ -1,6 +1,6 @@
 async function monitorUser AndMiningInfo(token, email, accounts, accountIndex) {
     let running = true;
-    const monitoringDuration = 60000; // Durasi monitoring dalam milidetik (60 detik)
+    const monitoringDuration = 5000; // Durasi monitoring dalam milidetik (60 detik)
     const startTime = Date.now();
 
     process.on('SIGINT', () => {
