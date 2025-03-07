@@ -102,7 +102,7 @@ async function startMining(token) {
     }
 }
 
-async function monitorUser AndMiningInfo(token, email, accounts, accountIndex) {
+async function monitorUserAndMiningInfo(token, email, accounts, accountIndex) {
     let running = true;
 
     process.on('SIGINT', () => {
