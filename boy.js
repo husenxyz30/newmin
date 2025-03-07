@@ -49,7 +49,7 @@ function generateAccountData() {
     return {
         full_name: `user${randomStr}`,
         username: `user${randomStr}`,
-        email: `user${randomStr}@gmail.com`,
+        email: `manusia${randomStr}@gmail.com`,
         password: `Pass${randomStr}123`,
         phone: `+628${Math.floor(100000000 + Math.random() * 900000000)}`,
         referral_code: referralCode,
