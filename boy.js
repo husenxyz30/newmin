@@ -202,7 +202,7 @@ async function main() {
                     accounts.push({ ...accountData, token, mining_status: miningStarted ? 'active' : 'inactive', created_at: new Date().toISOString() });
 
                     if (miningStarted) {
-                        await monitorUser AndMiningInfo(token, accountData.email, accounts, accounts.length - 1);
+                        await monitorUserAndMiningInfo(token, accountData.email, accounts, accounts.length - 1);
                     }
                 } else {
                     console.log(`Login failed for ${accountData.email}`);
