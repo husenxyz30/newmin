@@ -18,7 +18,7 @@ const firebaseHeaders = {
     'X-Client-Version': 'Android/Fallback/X22003001/FirebaseCore-Android',
     'X-Firebase-GMPID': '1:599727959790:android:5c819be0c7e7e3057a4dff',
     'X-Firebase-Client': 'H4sIAAAAAAAAAKtWykhNLCpJSk0sKVayio7VUSpLLSrOzM9TslIyUqoFAFyivEQfAAAA',
-    'User -Agent': 'Dalvik/2.1.0 (Linux; U; Android 7.1.2; ASUS_Z01QD Build/N2G48H)',
+    'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 7.1.2; ASUS_Z01QD Build/N2G48H)',
     'Host': 'www.googleapis.com',
     'Connection': 'Keep-Alive',
     'Accept-Encoding': 'gzip'
